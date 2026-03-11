@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import os
 from dataclasses import dataclass
+from fractions import Fraction
 from typing import List, Tuple
 
 from openpyxl import Workbook
@@ -12,6 +13,7 @@ from openpyxl.utils import get_column_letter
 @dataclass(frozen=True)
 class CollatzRow:
     n: int
+    me_value: float | int
     path: str
     ops: str
     div2_count: int
@@ -81,6 +83,20 @@ def format_ops(ops: str) -> str:
     return "".join(out)
 
 
+def apply_m_then_e(n: int, m_count: int, e_count: int) -> float | int:
+    x = n
+    for _ in range(m_count):
+        x = 3 * x + 1
+
+    if e_count <= 0:
+        return x
+
+    value = Fraction(x, 2**e_count)
+    if value.denominator == 1:
+        return int(value)
+    return float(value)
+
+
 def build_rows(start: int, end: int) -> List[CollatzRow]:
     rows: List[CollatzRow] = []
     for n in range(start, end + 1):
@@ -88,6 +104,7 @@ def build_rows(start: int, end: int) -> List[CollatzRow]:
         rows.append(
             CollatzRow(
                 n=n,
+                me_value=apply_m_then_e(n, mul3p1_count, div2_count),
                 path=format_path(values),
                 ops=format_ops(ops),
                 div2_count=div2_count,
@@ -119,9 +136,9 @@ def write_excel(rows: List[CollatzRow], out_path: str) -> None:
     ws = wb.active
     ws.title = "Collatz"
 
-    ws.append(["数字", "中间计算结果", "操作串", "除以2次数(e)", "乘以3加1次数(m)"])
+    ws.append(["数字", "中间计算结果", "操作串", "除以2次数(e)", "乘以3加1次数(m)", "先m后e结果"])
     for r in rows:
-        ws.append([r.n, r.path, r.ops, r.div2_count, r.mul3p1_count])
+        ws.append([r.n, r.path, r.ops, r.div2_count, r.mul3p1_count, r.me_value])
 
     ws.freeze_panes = "A2"
     autosize_columns(ws)
@@ -131,11 +148,11 @@ def write_excel(rows: List[CollatzRow], out_path: str) -> None:
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Export Collatz traces to Excel.")
     p.add_argument("--start", type=int, default=1, help="start integer (inclusive)")
-    p.add_argument("--end", type=int, default=10000, help="end integer (inclusive)")
+    p.add_argument("--end", type=int, default=1000000, help="end integer (inclusive)")
     p.add_argument(
         "--out",
         type=str,
-        default="collatz_1_10000.xlsx",
+        default="collatz_1_1000000.xlsx",
         help="output .xlsx filename (will be written under output/)",
     )
     return p.parse_args()
