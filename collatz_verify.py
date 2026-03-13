@@ -10,13 +10,15 @@ from typing import Dict, Set
 class CollatzVerifier:
     """考拉兹猜想验证器，使用 JSON 文件存储已验证的数和中间大数"""
     
-    def __init__(self, json_path: str = "collatz_cache.json", config_path: str = "config.json"):
+    def __init__(self, json_path: str = "collatz_cache.json", config_path: str = "config.json", progress_path: str = "progress.json"):
         self.json_path = json_path
         self.config_path = config_path
+        self.progress_path = progress_path
         self.verified_up_to: int = 0
         self.large_numbers: Set[int] = set()
         self.batch_size: int = 10000
         self._load_config()
+        self._load_progress()
         self._load_cache()
     
     def _load_config(self) -> None:
@@ -45,8 +47,36 @@ class CollatzVerifier:
             self.save_interval = 60
             self.log_progress = True
     
+    def _load_progress(self) -> None:
+        """从进度文件加载 verified_up_to"""
+        if not os.path.exists(self.progress_path):
+            print("未找到进度文件，将从 1 开始验证")
+            return
+        
+        try:
+            with open(self.progress_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                self.verified_up_to = data.get('verified_up_to', 0)
+                print(f"从进度文件加载：已验证到 {self.verified_up_to:,}")
+        except (json.JSONDecodeError, IOError) as e:
+            print(f"读取进度文件失败：{e}，将从头开始验证")
+            self.verified_up_to = 0
+    
+    def _save_progress(self) -> None:
+        """保存进度数据到 JSON 文件"""
+        data = {
+            'verified_up_to': self.verified_up_to,
+            'last_updated': datetime.now().isoformat()
+        }
+        
+        with open(self.progress_path, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+        
+        if self.log_progress:
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] 进度已保存：已验证到 {self.verified_up_to:,}")
+    
     def _load_cache(self) -> None:
-        """从 JSON 文件加载缓存数据"""
+        """从 JSON 文件加载缓存数据（仅加载 large_numbers）"""
         if not os.path.exists(self.json_path):
             print("未找到缓存文件，将从 1 开始验证")
             return
@@ -54,12 +84,10 @@ class CollatzVerifier:
         try:
             with open(self.json_path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
-                self.verified_up_to = data.get('verified_up_to', 0)
                 self.large_numbers = set(data.get('large_numbers', []))
-                print(f"从缓存加载：已验证到 {self.verified_up_to}, 缓存大数 {len(self.large_numbers)} 个")
+                print(f"从缓存加载：缓存大数 {len(self.large_numbers)} 个")
         except (json.JSONDecodeError, IOError) as e:
-            print(f"读取缓存失败：{e}，将从头开始验证")
-            self.verified_up_to = 0
+            print(f"读取缓存失败：{e}，将不使用缓存")
             self.large_numbers = set()
     
     def _save_cache(self) -> None:
@@ -70,7 +98,6 @@ class CollatzVerifier:
         cleaned_count = old_count - len(self.large_numbers)
         
         data = {
-            'verified_up_to': self.verified_up_to,
             'large_numbers': sorted(list(self.large_numbers)),
             'last_updated': datetime.now().isoformat()
         }
@@ -82,8 +109,7 @@ class CollatzVerifier:
         if self.log_progress:
             if cleaned_count > 0:
                 print(f"[{datetime.now().strftime('%H:%M:%S')}] 清理了 {cleaned_count} 个过期的缓存数字")
-            print(f"[{datetime.now().strftime('%H:%M:%S')}] 缓存已保存：已验证到 {self.verified_up_to:,}, "
-                  f"缓存大数 {len(self.large_numbers):,} 个")
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] 缓存已保存：缓存大数 {len(self.large_numbers):,} 个")
     
     def verify_single(self, n: int) -> bool:
         """
@@ -154,6 +180,7 @@ class CollatzVerifier:
                 current_time = time.time()
                 if batch_count >= self.batch_size or (current_time - last_save_time) >= self.save_interval:
                     self.verified_up_to = n
+                    self._save_progress()
                     self._save_cache()
                     
                     elapsed = current_time - start_time
@@ -175,6 +202,7 @@ class CollatzVerifier:
         except KeyboardInterrupt:
             print("\n\n⚠️  用户中断验证")
             self.verified_up_to = n - 1
+            self._save_progress()
             self._save_cache()
             print("✅ 最终缓存已保存")
             print(f"最终状态：已验证到 {self.verified_up_to:,}")
@@ -195,7 +223,8 @@ def main() -> None:
     
     verifier = CollatzVerifier(
         json_path="output/collatz_cache.json",
-        config_path="json/config.json"
+        config_path="json/config.json",
+        progress_path="json/progress.json"
     )
     
     # 显示当前状态
