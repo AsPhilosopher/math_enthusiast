@@ -1,0 +1,5 @@
+{
+  "batch_size": 10000,
+  "save_interval_seconds": 60,
+  "log_progress": true
+}

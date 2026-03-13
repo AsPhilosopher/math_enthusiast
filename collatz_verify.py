@@ -75,8 +75,9 @@ class CollatzVerifier:
             'last_updated': datetime.now().isoformat()
         }
         
+        # 使用紧凑格式保存 JSON（移除换行和缩进以压缩文件大小）
         with open(self.json_path, 'w', encoding='utf-8') as f:
-            json.dump(data, f, indent=2, ensure_ascii=False)
+            json.dump(data, f, separators=(',', ':'), ensure_ascii=False)
         
         if self.log_progress:
             if cleaned_count > 0:
@@ -193,8 +194,8 @@ def main() -> None:
     print("="*60)
     
     verifier = CollatzVerifier(
-        json_path="output/collatz_cache.json",
-        config_path="output/config.json"
+        json_path="json/collatz_cache.json",
+        config_path="json/config.json"
     )
     
     # 显示当前状态
