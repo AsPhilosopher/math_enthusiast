@@ -194,7 +194,7 @@ def main() -> None:
     print("="*60)
     
     verifier = CollatzVerifier(
-        json_path="json/collatz_cache.json",
+        json_path="output/collatz_cache.json",
         config_path="json/config.json"
     )
     
