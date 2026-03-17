@@ -148,11 +148,11 @@ def write_excel(rows: List[CollatzRow], out_path: str) -> None:
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Export Collatz traces to Excel.")
     p.add_argument("--start", type=int, default=1, help="start integer (inclusive)")
-    p.add_argument("--end", type=int, default=1000000, help="end integer (inclusive)")
+    p.add_argument("--end", type=int, default=10000, help="end integer (inclusive)")
     p.add_argument(
         "--out",
         type=str,
-        default="collatz_1_1000000.xlsx",
+        default="collatz_1_10000.xlsx", # 修改时不要忘了我
         help="output .xlsx filename (will be written under output/)",
     )
     return p.parse_args()
